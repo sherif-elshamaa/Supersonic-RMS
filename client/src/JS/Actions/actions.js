@@ -6,7 +6,7 @@ import {GET_INFO} from '../Constants/action-types'
 import {GET_SUB} from '../Constants/action-types'
 import {CANCEL_SUB} from '../Constants/action-types'
 import {GET_NOTIFICATION} from '../Constants/action-types' 
-import {POST_TOAST} from '../Constants/action-types'
+import {POST_TOAST, GET_PRICES} from '../Constants/action-types'
 
 export const authorization = (object) => {
     return {
@@ -53,6 +53,13 @@ export const cancelsub = (object) => {
 export const getnotification = (object) => {
     return {
         type: GET_NOTIFICATION,
+        payload: object
+    }
+}
+
+export const getprices= (object) => {
+    return {
+        type: GET_PRICES,
         payload: object
     }
 }

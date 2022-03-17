@@ -1,16 +1,12 @@
 import React, { useState } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import Plancancelbox from './Plancancelbox'
-import { cancelsub, posttoast } from "../../JS/Actions/actions"
-import { useNavigate } from 'react-router-dom';
 
 
 function Plan() {
     const [open, setOpen] = useState(false)
     const plan = useSelector((states) => states.sub)
-    const dispatch = useDispatch();
-    const history = useNavigate()
 
 
     const handleCancel = e => {
@@ -20,9 +16,7 @@ function Plan() {
 
     const handleCancelfree = async (e) => {
         e.preventDefault();
-        dispatch(cancelsub({ sub: { status: false } }))
-        dispatch(posttoast({ toast: { state: 'success', text: 'Subscription canceled successfully!', show: true } }))
-        history('/')
+        setOpen(true)
     }
 
     return (
@@ -63,7 +57,7 @@ function Plan() {
                                             </tr>
                                             <tr>
                                                 <td className=' tdstrong'>Invoice</td>
-                                                <td><a className="inline-flex items-center justify-center px-1 py-1 border border-transparent text-base font-medium rounded-md text-white bg-gray-400 hover:bg-gray-500" target="_blank" href={plan.invoiceUrl}>View invoice</a></td>
+                                                <td><a className="inline-flex items-center justify-center px-1 py-1 border border-transparent text-base font-medium rounded-md text-white bg-gray-400 hover:bg-gray-500" target="_blank" href={plan.invoiceUrl} rel="noreferrer">View invoice</a></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -74,7 +68,7 @@ function Plan() {
                                     Cancel subscription
                                 </button>
                             </div>
-                            <Plancancelbox open={open} setOpen={setOpen} subId={plan.stripeSubID} />
+                            <Plancancelbox open={open} setOpen={setOpen} subId={plan.stripeSubID} planType={plan.planType} />
                         </div>
                     </div>
                     :
@@ -117,7 +111,7 @@ function Plan() {
                                 <Link to="/subscribe/pro" className="inline-flex items-center justify-center ml-4 px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
                                     upgrade to PRO
                                 </Link>
-
+                                <Plancancelbox open={open} setOpen={setOpen} subId={plan._id} planType={plan.planType} />
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,4 @@
-const baseUrl =
-  process.env.NODE_ENV !== "production"
-    ? "https://supersonicapi.herokuapp.com"
-    : "https://supersonicapi.herokuapp.com";
+const baseUrl ="https://supersonicapi.herokuapp.com";
+// const baseUrl ="http://localhost:4000";
 
 module.exports = baseUrl;

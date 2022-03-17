@@ -89,7 +89,7 @@ export default function Navbar() {
 
   const handleSignout = async (e) => {
     e.preventDefault()
-    const { data } = await axios.get(`${baseUrl}/api/logout`, {
+    await axios.get(`${baseUrl}/api/logout`, {
       withCredentials: true,
     });
     cookie.remove('fullname');

@@ -8,7 +8,7 @@ import { cancelsub, posttoast } from "../../JS/Actions/actions"
 import { useNavigate } from 'react-router-dom';
 import baseUrl from '../../utils/baseUrl'
 
-function Plancancelbox({ open, setOpen, subId }) {
+function Plancancelbox({ open, setOpen, subId, planType }) {
 
     const dispatch = useDispatch();
     const [errorMsg, setErrorMsg] = useState(null);
@@ -25,24 +25,42 @@ function Plancancelbox({ open, setOpen, subId }) {
         e.preventDefault();
         setFormLoading(true);
         try {
-            const { data } = await axios.delete(
-                `${baseUrl}/api/sub`,
-                { params: { id: subId } }
-            )
-            console.log(data);
-            if (data.status === "canceled") {
-                dispatch(cancelsub({ sub: { status: false } }))
-                dispatch(posttoast({ toast: { state: 'success', text: 'Subscription canceled successfully!', show: true } }))
+            if (planType === 'PRO') {
+
+                const { data } = await axios.delete(
+                    `${baseUrl}/api/sub`,
+                    {
+                        withCredentials: true,
+                        params: { id: subId }
+                    }
+                )
+                if (data.status === "canceled") {
+                    dispatch(cancelsub({ sub: { status: false } }))
+                    dispatch(posttoast({ toast: { state: 'success', text: 'Subscription canceled successfully!', show: true } }))
+                }
+                setFormLoading(false)
+                history('/')
+            } else {
+                const { data } = await axios.delete(
+                    `${baseUrl}/api/subfree`,
+                    {
+                        withCredentials: true,
+                        params: { id: subId }
+                    }
+                )
+                if (data.status === "canceled") {
+                    dispatch(cancelsub({ sub: { status: false } }))
+                    dispatch(posttoast({ toast: { state: 'success', text: 'Subscription canceled successfully!', show: true } }))
+                }
+                setFormLoading(false)
+                history('/')
             }
-            setFormLoading(false)
-            setOpen(false)
-            history('/')
 
 
         } catch (error) {
             setFormLoading(false);
             const errorMsg = catchError(error);
-            setErrorMsg(errorMsg);
+            setErrorMsg(errorMsg.msg);
             console.log(error);
         }
 
@@ -64,18 +82,7 @@ function Plancancelbox({ open, setOpen, subId }) {
                         </div>
                         : ""
                     }
-                    <div>
-                        {errorMsg !== null ?
-                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                                <strong className="font-bold">Holy smokes!</strong>
-                                <span className="block sm:inline"> {errorMsg}</span>
-                                <span className="absolute top-0 bottom-0 right-0 px-4 py-3">
-                                    <svg className="fill-current h-6 w-6 text-red-500" role="button" onClick={handleCloseError} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
-                                </span>
-                            </div>
-                            :
-                            ""}
-                    </div>
+
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -102,6 +109,18 @@ function Plancancelbox({ open, setOpen, subId }) {
                         leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     >
                         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                            <div>
+                                {errorMsg !== null ?
+                                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                        <strong className="font-bold">Holy smokes!</strong>
+                                        <span className="block sm:inline"> {errorMsg}</span>
+                                        <span className="absolute top-0 bottom-0 right-0 px-4 py-3">
+                                            <svg className="fill-current h-6 w-6 text-red-500" role="button" onClick={handleCloseError} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
+                                        </span>
+                                    </div>
+                                    :
+                                    ""}
+                            </div>
                             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                 <div className="sm:flex sm:items-start">
                                     <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">

@@ -32,7 +32,8 @@ function Tickets() {
             }
             await axios.post(
                 `${baseUrl}/api/ticket`,
-                data
+                data,
+                { withCredentials: true }
             )
             
 

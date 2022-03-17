@@ -1,18 +1,58 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Header from '../components/Navbar';
 import Footer from '../components/Footer';
 import Toaster from '../components/Toaster';
+import { useDispatch, useSelector } from "react-redux";
+import baseUrl from '../utils/baseUrl'
+import { getprices } from '../JS/Actions/actions'
+import axios from 'axios';
+
 
 
 function Pricing() {
+    const dispatch = useDispatch();
+    const state = useSelector((states) => states)
+    const [prices, setPrices] = useState(state.prices)
+    const [formLoading, setFormLoading] = useState(false);
+    useEffect(() => {
+        try {
+            async function get(){
+                setFormLoading(true)
+                const data = await axios.get(`${baseUrl}/api/plans`,
+                { withCredentials: true })
+                dispatch(getprices(data.data.plans))
+                setFormLoading(false)
+            }
+            get()
+        } catch (error) {
+            setFormLoading(false);
+            console.log(error);
+        }
+    }, [])
 
+    useEffect(() => {
+        setPrices(state.prices)
+    }, [state])
+    const pro = prices.filter(prices => prices.type === "PRO")
     return (
         <div className="h-screen">
             <Header />
             <Toaster />
             <div className="absolute hidden w-full bg-white lg:block h-96" />
             <div className="relative px-4 py-16 bg-white mx-auto sm:max-w-xl md:max-w-full lg:max-w-screen-xl md:px-24 lg:px-8 lg:py-20">
+                {formLoading ?
+                    <div className="w-full h-full fixed block top-0 left-0 bg-white opacity-75 z-50">
+                        <span className="text-blue-500 opacity-75 right-10 top-60 my-0 mx-auto block relative w-0 h-0">
+                            <svg xmlns="http://www.w3.org/2000/svg"  >
+                                <circle cx="50" cy="50" fill="none" stroke="#1d3f72" strokeWidth="10" r="35" strokeDasharray="164.93361431346415 56.97787143782138">
+                                    <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1" />
+                                </circle>
+                            </svg>
+                        </span>
+                    </div>
+                    : ""
+                }
                 <div className="max-w-xl mb-10 md:mx-auto sm:text-center lg:max-w-2xl md:mb-12">
                     <h2 className="max-w-lg mb-6 font-sans text-3xl font-bold leading-none tracking-tight text-gray-900 sm:text-4xl md:mx-auto">
                         <span className="relative inline-block">
@@ -85,7 +125,7 @@ function Pricing() {
                                     <div className="space-y-2">
                                         <h4 className="text-2xl font-bold">Pro</h4>
                                     </div>
-                                    <span className="text-6xl font-bold">$60
+                                    <span className="text-6xl font-bold">${pro[0] ? pro[0].price : ""}
                                         <span className="text-sm tracking-wide">/month</span>
                                     </span>
                                     <p className="leading-relaxed">Streamline operations and boost revenue as your needs grow more complex.</p>

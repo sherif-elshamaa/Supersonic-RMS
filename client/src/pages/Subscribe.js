@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import Header from '../components/Navbar';
 import Footer from '../components/Footer';
 import Getinfo from '../components/subscripe/Getinfo';
@@ -17,7 +17,7 @@ function Subscribe() {
             </div>
             <div className="grow">
                 <Toaster />
-                {info.companyName ?
+                {info?.companyName ?
                     <>
                         <div className="max-w-7xl mx-auto mt-2.5 flex flex-col shadow overflow-hidden">
                             <div className="mt-8 mx-auto md:w-3/4 mb-8">

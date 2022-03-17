@@ -89,7 +89,8 @@ function Editprofile() {
             if (data.authenticated === true) {
                 const { updatedUser } = await axios.put(
                     `${baseUrl}/api/update`,
-                    newuser
+                    newuser,
+                    { withCredentials: true }
                 )
                 dispatch(posttoast({ toast: { state: 'success', text: 'Profile updated successful!', show: true } }))
                 const object = {

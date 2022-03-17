@@ -73,18 +73,19 @@ function Getinfo() {
             if (data.authenticated === true) {
                 await axios.post(
                     `${baseUrl}/api/subscriberdata`,
-                    subscriberData
+                    subscriberData,
+                    { withCredentials: true }
                 )
             }
             // dispatch subscription data to state 
-            dispatch(getinfo({info: subscriberData}))
             dispatch(posttoast({ toast: { state: 'success', text: 'Company data saved successful!', show: true } }))
+            setFormLoading(false)
+            dispatch(getinfo({info: subscriberData}))
         } catch (error) {
             setFormLoading(false);
             const errorMsg = catchError(error);
             setErrorMsg(errorMsg.msg);
         }
-        setFormLoading(false)
     }
 
     return (

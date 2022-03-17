@@ -5,6 +5,7 @@ import { getsub, posttoast } from '../../JS/Actions/actions'
 import { useLocation, useNavigate } from 'react-router-dom';
 import catchError from '../../utils/catchErrors';
 import baseUrl from '../../utils/baseUrl'
+import { getprices } from '../../JS/Actions/actions'
 // stripe
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -32,24 +33,47 @@ const CARD_ELEMENT_OPTIONS = {
 
 function Checkout() {
     const dispatch = useDispatch();
-    const history = useNavigate()
-    const [errorMsg, setErrorMsg] = useState(null);
-    const [formLoading, setFormLoading] = useState(false);
     const state = useSelector((states) => states)
     const [user, setUser] = useState(state.status.user)
     const location = useLocation();
-
+    const history = useNavigate()
+    const [errorMsg, setErrorMsg] = useState(null);
+    const [formLoading, setFormLoading] = useState(false);
+    const [prices, setPrices] = useState(state.prices);
 
     useEffect(() => {
         if (state.sub) {
             if (state.sub.status === true && state.sub.planType === "PRO") {
                 history('/profile#plan')
             }
-            if (state.sub.planType === "free" && location.pathname === "/subscribe/free") {
+            if (state.sub.planType === "FREE" && location.pathname === "/subscribe/free") {
                 history('/profile#plan')
             }
         }
+    }, [])
+
+    useEffect(() => {
+        try {
+            setFormLoading(true)
+            async function get() {
+                const data = await axios.get(`${baseUrl}/api/plans`,
+                    { withCredentials: true })
+                dispatch(getprices(data.data.plans))
+                setFormLoading(false)
+            }
+            get()
+        } catch (error) {
+            setFormLoading(false);
+            console.log(error);
+        }
+    }, [])
+
+    useEffect(() => {
+        setPrices(state.prices)
     }, [state])
+    const pro = prices.filter(prices => prices.type === "PRO")
+
+
 
     const stripe = useStripe();
     const elements = useElements();
@@ -64,7 +88,10 @@ function Checkout() {
         e.preventDefault();
         setFormLoading(true);
         try {
-            const res = await axios.post(`${baseUrl}/api/freesub`, { 'email': user.email });
+            const res = await axios.post(`${baseUrl}/api/freesub`,
+                { 'email': user.email, 'id': user.ID },
+                { withCredentials: true }
+            );
             const { subscription } = res.data;
             dispatch(getsub({ sub: subscription }))
             dispatch(posttoast({ toast: { state: 'success', text: 'Subscribe successful!', show: true } }))
@@ -105,7 +132,10 @@ function Checkout() {
                 return
             } else {
 
-                const res = await axios.post(`${baseUrl}/api/sub`, { 'payment_method': result.paymentMethod.id, 'email': user.email, 'id': user.ID });
+                const res = await axios.post(`${baseUrl}/api/sub`,
+                    { 'payment_method': result.paymentMethod.id, 'email': user.email, 'id': user.ID },
+                    { withCredentials: true },
+                );
                 const { client_secret, status, subscription } = res.data;
                 dispatch(getsub({ sub: subscription }))
                 dispatch(posttoast({ toast: { state: 'success', text: 'Subscribe successful!', show: true } }))
@@ -172,7 +202,7 @@ function Checkout() {
                             <div className="p-6 flex hover:bg-gray-300 space-y-6 rounded shadow sm:p-8 bg-coolGray-50">
                                 <div className="">
                                     <h4 className="text-2xl font-bold">Pro</h4>
-                                    <span className="text-2xl font-bold">$60
+                                    <span className="text-2xl font-bold">${pro[0] ? pro[0].price : ""}
                                         <span className="text-sm tracking-wide">/month</span>
                                     </span>
                                     <p className="leading-relaxed">Streamline operations and boost revenue as your needs grow more complex.</p>

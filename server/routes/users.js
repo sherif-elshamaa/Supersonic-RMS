@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const querystring = require('query-string');
 const Subscriber = require('../schema/Subscriber');
 const SubscriberData = require('../schema/SubscriberData');
 const Subscription = require('../schema/Subscription');
@@ -7,16 +9,159 @@ const Notification = require('../schema/Notification');
 const EmailSubscription = require('../schema/EmailSubscription')
 const ContactUs = require('../schema/ContactUs');
 const Ticket = require('../schema/Ticket');
+const Invoice = require('../schema/Invoice');
+const Plans = require('../schema/Plans')
 const bcrypt = require('bcrypt');
 const passport = require('passport');
 const stripe = require('stripe')(process.env.STRIPE);
 const endpointSecret = process.env.endpointSecret
 const sgMail = require('@sendgrid/mail')
 const WelcomeEmail = require('../emails/WelcomeEmail')
+var generator = require('generate-password');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
 const router = express.Router();
 
+const checkauth = (req, res, next) => {
+  const authenticated = typeof req.user !== 'undefined';
+  if (!req.isAuthenticated()) {
+    // if user not authenticated send it to client
+    console.log(`not Logged in : ${authenticated}`);
+    res.status(500).json({ msg: 'Authorization failed', authenticated });
+    return;
+  }
+  next();
+}
+
+const sendToRMS = async (req, res) => {
+  const { id } = req.body;
+  const subscriber = await Subscriber.findOne({ _id: id });
+  const userEmail = subscriber.email.split('@');
+  const fullName = subscriber.firstName + ' ' + subscriber.lastName
+
+  const subscriberData = await SubscriberData.findOne({ userId: id })
+  const subscription = await Subscription.findOne({ userId: id })
+
+  var password = generator.generate({
+    length: 10,
+    numbers: true
+  });
+
+  let loginData = querystring.stringify({
+    username: process.env.RMS_USERNAME,
+    password: process.env.RMS_PASSWORD
+  })
+
+  let loginOptions = {
+    host: process.env.RMS_URL,
+    port: 5000,
+    path: '/auth/signin',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(loginData)
+    }
+  };
+
+
+  try {
+    const logRequest = http.request(loginOptions, function (response) {
+      response.setEncoding('utf8');
+      var token = ""
+      response.on('data', function (chunk) {
+        console.log("body: " + chunk);
+        token += chunk
+        const readyToken = token.slice(16, -2);
+
+        let userData = querystring.stringify({
+          _id: id,
+          username: userEmail[0],
+          password: password,
+          role: "SUBSCRIPER"
+        })
+
+        let userOptions = {
+          host: process.env.RMS_URL,
+          port: 5000,
+          path: '/auth/signup',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(userData),
+            'Authorization': `Bearer ${readyToken}`
+          }
+        };
+
+        const userRequest = http.request(userOptions, function (response) {
+          response.setEncoding('utf8');
+          response.on('data', function (chunk) {
+            console.log("body: " + chunk);
+
+          })
+        })
+        userRequest.write(userData);
+        userRequest.end();
+
+
+        let createData = querystring.stringify({
+          _id: subscriberData._id,
+          userId: id,
+          companyName: subscriberData.companyName,
+          businessType: subscriberData.businessType,
+          numberOfEmployees: subscriberData.numberOfEmployees,
+          businessNumber: subscriberData.businessNumber,
+          address: subscriberData.address,
+          country: subscriberData.country,
+          city: subscriberData.city,
+          zip: subscriberData.zipCode,
+          storeName: subscriberData.companyName,
+          subscription: subscription.planType,
+          fullName: fullName,
+        })
+
+        let createOptions = {
+          host: process.env.RMS_URL,
+          port: 5000,
+          path: '/store',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(createData),
+            'Authorization': `Bearer ${readyToken}`
+          }
+        };
+
+        const createRequest = http.request(createOptions, function (response) {
+          response.setEncoding('utf8');
+          response.on('data', function (chunk) {
+            console.log("body: " + chunk);
+          })
+        })
+        createRequest.write(createData);
+        createRequest.end();
+      })
+    })
+
+    logRequest.write(loginData);
+    logRequest.end();
+    return 
+  } catch (error) {
+    console.log(error);
+  }
+
+}
+
+
+router.get('/plans', async (req, res) => {
+  try {
+    const plans = await Plans.find();
+    return res.status(200).json({ plans });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ msg: "Server Error : get plans" })
+  }
+
+})
 router.post('/register', async (req, res) => {
   const body = req.body;
   const subscriber = await Subscriber.findOne({ email: body.email.toLowerCase() });
@@ -66,7 +211,7 @@ router.post('/register', async (req, res) => {
 
 });
 
-router.get('/notification', async (req, res) => {
+router.get('/notification', checkauth, async (req, res) => {
   const id = req.query.id
   try {
     const data = await Notification.findOne({ userId: id });
@@ -81,7 +226,7 @@ router.get('/notification', async (req, res) => {
   }
 })
 
-router.put('/notification', async (req, res) => {
+router.put('/notification', checkauth, async (req, res) => {
   const body = req.body;
   console.log(body);
   try {
@@ -91,7 +236,7 @@ router.put('/notification', async (req, res) => {
     return res.status(200).json({ notification: data });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send("Server Error : update notification failed")
+    return res.status(404).send("Server Error : update notification failed")
   }
 })
 
@@ -119,7 +264,7 @@ router.post('/contactus', async (req, res) => {
   }
 })
 
-router.post('/login', (req, res, next) => {
+router.post('/login', async (req, res, next) => {
   try {
     passport.authenticate('local', function (err, user, info) {
       if (err) {
@@ -141,7 +286,7 @@ router.post('/login', (req, res, next) => {
   }
 });
 
-router.get('/profile', (req, res) => {
+router.get('/profile', checkauth, (req, res) => {
   res.send({ user: req.user ? req.user : 'no user' });
 });
 
@@ -150,14 +295,14 @@ router.get('/checkAuthentication', (req, res) => {
   if (!req.isAuthenticated()) {
     // if user not authenticated send it to client
     console.log(`not Logged in : ${authenticated}`);
-    res.status(500).json({ msg: 'not logged in', authenticated });
+    res.status(500).json({ msg: 'Authorization failed', authenticated });
   } else {
     const id = req.user._id;
     res.status(200).json({ id, authenticated }); // if user  authenticated send it to client with user object
   }
 });
 
-router.put('/update', async (req, res) => {
+router.put('/update', checkauth, async (req, res) => {
   const body = req.body;
   console.log(body);
   try {
@@ -167,7 +312,7 @@ router.put('/update', async (req, res) => {
     const user = await User.findOne({ userId: body.id });
     const isPassword = await bcrypt.compare(body.oldPassword, user.password)
     if (!isPassword) {
-      return res.status(401).json({msg: "Invalid password"});
+      return res.status(401).json({ msg: "Invalid password" });
     }
     user.password = await bcrypt.hash(body.password, 10);
     await user.save();
@@ -179,7 +324,7 @@ router.put('/update', async (req, res) => {
   }
 });
 
-router.post('/subscriberdata', async (req, res) => {
+router.post('/subscriberdata', checkauth, async (req, res) => {
   const body = req.body;
   try {
     const data = await SubscriberData.findOne({ userId: body.userId });
@@ -198,12 +343,12 @@ router.post('/subscriberdata', async (req, res) => {
   res.status(200).json("ok");
 })
 
-router.get("/subscriberdata", async (req, res) => {
+router.get("/subscriberdata", checkauth, async (req, res) => {
   const id = req.query.id
   try {
     const data = await SubscriberData.findOne({ userId: id });
     if (!data) {
-      return res.status(401).send({ msg: "info not found" });
+      return res.status(404).send({ msg: "no data found" })
     }
     console.log(data);
     return res.json({ info: data });
@@ -213,7 +358,7 @@ router.get("/subscriberdata", async (req, res) => {
   }
 })
 
-router.get("/sub", async (req, res) => {
+router.get("/sub", checkauth, async (req, res) => {
   const id = req.query.id
   try {
     const data = await Subscription.findOne({ userId: id });
@@ -229,7 +374,7 @@ router.get("/sub", async (req, res) => {
 
 })
 
-router.delete("/sub", async (req, res) => {
+router.delete("/sub", checkauth, async (req, res) => {
   const id = req.query.id
   try {
     const data = await Subscription.findOne({ stripeSubID: id });
@@ -249,6 +394,21 @@ router.delete("/sub", async (req, res) => {
   }
 })
 
+router.delete("/subfree", checkauth, async (req, res) => {
+  const id = req.query.id
+  const data = await Subscription.findOne({_id: id})
+  if(!data){
+    return res.status(404).send({ msg: "no subscription found"})
+  }
+  try {
+    await Subscription.findOneAndDelete({ _id: id })
+    return res.json({ status: "canceled" })
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({ msg: "Server Error : cancel subscriptions" })
+  }
+})
+
 router.get('/logout', (req, res) => {
   console.log('before', req.user);
 
@@ -257,7 +417,7 @@ router.get('/logout', (req, res) => {
   res.status(200).json({ message: 'logged out', authenticated: false });
 });
 
-router.post('/sub', async (req, res) => {
+router.post('/sub', checkauth, async (req, res, next) => {
   const { email, payment_method, id } = req.body;
 
   try {
@@ -283,6 +443,7 @@ router.post('/sub', async (req, res) => {
 
     const status = subscription['latest_invoice']['payment_intent']['status']
     const invoiceUrl = subscription['latest_invoice']['hosted_invoice_url']
+    const invoiceId = subscription['latest_invoice']['id']
     const client_secret = subscription['latest_invoice']['payment_intent']['client_secret']
     const stripeId = subscription.id;
 
@@ -292,15 +453,25 @@ router.post('/sub', async (req, res) => {
         userId: id,
         stripeSubID: stripeId,
         planType: "PRO",
-        price: "60$",
+        price: 60,
         startDate: Date.now(),
         customersID: customer.id,
         email: email,
         invoiceUrl: invoiceUrl,
+        invoiceId: invoiceId,
         status: status === "succeeded" ? true : false
       }
       const newSubscription = new Subscription({ ...sub })
       await newSubscription.save();
+      const invoice = {
+        userId: id,
+        invoiceUrl: invoiceUrl,
+        invoiceId: invoiceId,
+        income: 60
+      }
+      const newInvoice = new Invoice({ ...invoice })
+      await newInvoice.save();
+
 
       console.log("status: " + status);
       console.log("client_secret: " + client_secret);
@@ -313,11 +484,12 @@ router.post('/sub', async (req, res) => {
 
   } catch (error) {
     console.log(error);
-    res.status(501).json({ error: error })
+    return res.status(501).json({ error: error })
   }
-})
+  next();
+}, sendToRMS)
 
-router.post('/freesub', async (req, res) => {
+router.post('/freesub', checkauth, async (req, res, next) => {
   const { email } = req.body;
   try {
     const data = await Subscription.findOne({ email: email, planType: "free" })
@@ -328,7 +500,7 @@ router.post('/freesub', async (req, res) => {
     if (subscriber) {
       const data = {
         userId: subscriber._id,
-        planType: "free",
+        planType: "FREE",
         price: "0",
         startDate: Date.now(),
         email: email,
@@ -337,15 +509,15 @@ router.post('/freesub', async (req, res) => {
       const newSubscription = new Subscription({ ...data })
       await newSubscription.save();
       res.json({ 'subscription': newSubscription });
-
     }
   } catch (error) {
     console.log(error);
     res.status(501).json({ error: error })
   }
-})
+  next();
+}, sendToRMS)
 
-router.post('/ticket', async (req, res) => {
+router.post('/ticket', checkauth, async (req, res) => {
   const body = req.body;
   console.log(body);
   try {
@@ -363,7 +535,7 @@ router.post('/ticket', async (req, res) => {
   }
 })
 
-router.post('/reset', async (req, res) => {
+router.post('/reset', checkauth, async (req, res) => {
   const { email } = req.body;
   try {
     const subscriber = await Subscriber.findOne({ email: email.toLowerCase() });
@@ -394,7 +566,6 @@ router.post('/reset', async (req, res) => {
       to: subscriber.email, // Change to your recipient
       from: 'sherif.elshamaaa@gmail.com', // Change to your verified sender
       subject: 'Password reset',
-      text: 'and easy to do anywhere, even with Node.js',
       html: `<body>
                   <div style="text-align:center;">
                       <div>password reset succesfuly</div>
@@ -463,6 +634,8 @@ router.post('/webhooks', async (req, res) => {
   // Return a 200 response to acknowledge receipt of the event
   res.json({ received: true });
 })
+
+
 
 
 

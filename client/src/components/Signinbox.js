@@ -20,7 +20,6 @@ export default function Signupbox() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [submitDisabled, setSubmitDisabled] = useState(false);
-  const [info, setInfo] = useState({});
   const { email, password } = user;
 
   const handleChange = e => {
@@ -66,14 +65,18 @@ export default function Signupbox() {
             'balance': data.user.accountbalance || "0"
           },
         }
-        cookie.set('fullname', object.user.firstname + ' ' + object.user.lastname)
-        cookie.set('id', object.user.ID)
+        cookie.set('fullname', object.user.firstname + ' ' + object.user.lastname, { sameSite: 'None', secure: true })
+        cookie.set('id', object.user.ID, { sameSite: 'None', secure: true })
         dispatch(authorization(object));
       }
 
       await axios.get(
         `${baseUrl}/api/subscriberdata`,
-        { params: { id: cookie.get('id') } }
+        {
+          withCredentials: true,
+          params: { id: cookie.get('id') },
+          headers: {'Access-Control-Allow-Origin': '*'}
+        }
       ).then((response) => {
         const info = response.data.info
         dispatch(getinfo({ info: info }))
@@ -86,7 +89,11 @@ export default function Signupbox() {
 
       await axios.get(
         `${baseUrl}/api/sub`,
-        { params: { id: cookie.get('id') } }
+        {
+          withCredentials: true,
+          params: { id: cookie.get('id') },
+          headers: {'Access-Control-Allow-Origin': '*'}
+        }
       ).then((response) => {
         const sub = response.data.sub
         if (sub) {
@@ -102,7 +109,11 @@ export default function Signupbox() {
 
       await axios.get(
         `${baseUrl}/api/notification`,
-        { params: { id: cookie.get('id') } }
+        {
+          withCredentials: true,
+          params: { id: cookie.get('id') },
+          headers: {'Access-Control-Allow-Origin': '*'}
+        }
       ).then((response) => {
         const notification = response.data.notification
         if (notification) {
@@ -116,12 +127,15 @@ export default function Signupbox() {
         console.log(error);
       })
 
-      dispatch(posttoast({toast:{state: 'success', text: 'Login successful', show: true}}))
-      history(location?location:"/")
+      dispatch(posttoast({ toast: { state: 'success', text: 'Login successful', show: true } }))
+      history(location ? location : "/")
     } catch (error) {
       setFormLoading(false);
       const errorMsg = catchError(error);
-      setErrorMsg(errorMsg.slice(104,-23));
+      if (errorMsg) {
+
+        setErrorMsg(errorMsg.slice(104, -23));
+      }
     }
   }
 

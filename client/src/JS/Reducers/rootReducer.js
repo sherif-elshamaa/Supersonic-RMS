@@ -5,7 +5,7 @@ import { GET_INFO } from "../Constants/action-types";
 import { GET_SUB } from "../Constants/action-types";
 import { CANCEL_SUB } from "../Constants/action-types";
 import { GET_NOTIFICATION } from "../Constants/action-types";
-import { POST_TOAST } from "../Constants/action-types";
+import { POST_TOAST, GET_PRICES } from "../Constants/action-types";
 
 const initialState = {
   status: {
@@ -19,7 +19,8 @@ const initialState = {
     state: "",
     text: "",
     show: false
-  }
+  },
+  prices: []
 };
 
 function rootReducer(state = initialState, action) {
@@ -85,6 +86,12 @@ function rootReducer(state = initialState, action) {
           text: action.payload.toast.text,
           show: action.payload.toast.show
         }
+      }
+    }
+    case GET_PRICES:{
+      return {
+        ...state,
+        prices: action.payload
       }
     }
     default:

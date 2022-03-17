@@ -57,7 +57,8 @@ function Settings() {
             if (data.authenticated === true) {
                 const notification = await axios.put(
                     `${baseUrl}/api/notification`,
-                    update
+                    update,
+                    { withCredentials: true }
                 )
                 dispatch(getnotification({ notification: notification.data.notification }))
             }

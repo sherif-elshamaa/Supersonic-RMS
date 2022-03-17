@@ -35,7 +35,7 @@ function Features() {
                 <div className="text-center">
                     <h2 className="text-base text-gray-600 font-semibold tracking-wide uppercase">Restaurant management system</h2>
                     <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-                        A better way to send money
+                        A better way to manage restaurant
                     </p>
                     <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
                     Restaurant management systems help you manage sales, staff, inventory and more.

@@ -34,7 +34,13 @@ function Signupbox() {
     const handleSubmit = async e => {
         e.preventDefault();
         setFormLoading(true);
+        if(password.length < 6){
+            setErrorMsg("password must be at least 6 characters")
+            setFormLoading(false)
+            return;
+        }
         if (!isEmail(email)) {
+            setFormLoading(false)
             setErrorMsg("invaild Email")
             return;
         }
