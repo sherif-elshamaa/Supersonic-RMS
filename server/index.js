@@ -25,13 +25,7 @@ app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     next();
   });
-app.use(
-    cors({
-        origin: ['https://supersonicapp.herokuapp.com', 'http://localhost:3000', 'http://localhost:3001', 'https://supersonic-admin.herokuapp.com'],  // <-- location of the react app were connecting to
-        credentials: true,
-    })
-
-);
+app.options('*', cors()) 
 app.use(
     session({
         secret: process.env.SECRET_KEY,
